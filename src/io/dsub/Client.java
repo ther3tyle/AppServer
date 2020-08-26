@@ -1,8 +1,12 @@
 package io.dsub;
 
+import io.dsub.model.Message;
 import io.dsub.model.RemoteMessage;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.UUID;
 
@@ -22,7 +26,7 @@ public class Client implements Trackable, Readable, Runnable {
         this.writer = new PrintWriter(socket.getOutputStream());
     }
 
-    public UUID getId() {
+    public UUID getUUID() {
         return id;
     }
 
@@ -38,6 +42,10 @@ public class Client implements Trackable, Readable, Runnable {
         return writer;
     }
 
+    public void sendMessage(Message message) {
+
+    }
+
     public void close() {
         try {
             this.socket.close();
@@ -47,13 +55,16 @@ public class Client implements Trackable, Readable, Runnable {
     }
 
     @Override
-    public void read() {
+    public String read() {
+        return this.inputMessage;
+    }
+
+    private void fetchAvailableMessage() {
         try {
-            if (this.reader.ready()){
-                this.inputMessage = reader.readLine();
-            }
+            if (this.reader.ready())
+                this.inputMessage = this.reader.readLine();
         } catch (IOException e) {
-            this.inputMessage = e.getMessage();
+            System.out.println(e.getMessage());
         }
     }
 
@@ -62,11 +73,11 @@ public class Client implements Trackable, Readable, Runnable {
         MessageHandler.addClient(this);
         try {
             while (this.socket.isConnected()) {
-                read();
+                fetchAvailableMessage();
                 if (this.inputMessage != null) {
-                    RemoteMessage m;
+                    Message m;
                     m = new RemoteMessage(this.inputMessage, this.id);
-                    MessageHandler.enqueue(m);
+                    MessageHandler.enqueueOutbound(m);
                     this.inputMessage = null;
                 }
             }

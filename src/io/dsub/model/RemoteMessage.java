@@ -13,7 +13,7 @@ public class RemoteMessage implements Message {
     }
 
     @Override
-    public String getData() {
+    public String read() {
         return data;
     }
 

@@ -14,8 +14,8 @@ public class LocalMessage implements Message {
     }
 
     @Override
-    public String getData() {
-        return null;
+    public String read() {
+        return this.data;
     }
 
     @Override
