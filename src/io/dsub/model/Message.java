@@ -1,11 +1,5 @@
 package io.dsub.model;
 
-import io.dsub.Readable;
-import io.dsub.Trackable;
+public abstract class Message {
 
-import java.util.UUID;
-
-public interface Message extends Trackable, Readable {
-    String read();
-    UUID getUUID();
 }
