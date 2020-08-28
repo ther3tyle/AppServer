@@ -1,79 +1,49 @@
 package io.dsub.service;
 
-import io.dsub.model.HumanPlayer;
-import io.dsub.model.Player;
-import io.dsub.model.RemotePlayer;
+import io.dsub.model.Message;
+import io.dsub.model.Status;
 
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
-public class MessageService extends Thread implements Service {
-    private static AtomicLong id = new AtomicLong();
-    private ServerSocket serverSocket;
-    private final CountDownLatch latch;
-    private boolean isActive;
-    private final Map<Long, HumanPlayer> players;
-    private final ReadWriteLock readWriteLock;
-    private final Lock readLock;
-    private final Lock writeLock;
+public class ConnectionService implements Service {
 
-    public MessageService(CountDownLatch latch, Map<Long, HumanPlayer> players) {
-        this.latch = latch;
-        this.players = players;
-        this.readWriteLock = new ReentrantReadWriteLock();
-        this.readLock = this.readWriteLock.readLock();
-        this.writeLock = this.readWriteLock.writeLock();
-    }
-
-    private void put(Long id, HumanPlayer player) {
-        try {
-            writeLock.lock();
-            players.put(id, player);
-        } finally {
-            writeLock.unlock();
-        }
-    }
-
-    private HumanPlayer get(Long id) {
-        HumanPlayer queryPlayer;
-        try {
-            readLock.lock();
-            queryPlayer = players.get(id);
-        } finally {
-            readLock.unlock();
-        }
-        return queryPlayer;
-    }
+    private BlockingQueue<Message> messageArrayBlockingQueue;
 
     @Override
     public void initThenReport() {
-        try {
-            this.serverSocket = new ServerSocket(5000);
-            this.latch.countDown();
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
-            this.isActive = false;
-        }
+        this.messageArrayBlockingQueue = new ArrayBlockingQueue<>(50);
     }
 
     @Override
-    public void run() {
-        this.initThenReport();
-        while (isActive) {
-            try {
-                Socket socket = this.serverSocket.accept();
-                HumanPlayer player = new RemotePlayer(socket);
-                this.put(id.getAndIncrement(), player);
-            } catch (IOException e) {
-                this.isActive = false;
+    public Status call() throws Exception {
+
+        while (true) {
+            if (messageArrayBlockingQueue.isEmpty()) continue;
+
+            while (!messageArrayBlockingQueue.isEmpty()) {
+                Message m = messageArrayBlockingQueue.take();
+                handleMessage(m);
             }
+
+            break;
         }
+        return Status.OK;
+    }
+
+    private void handleMessage(Message m) {
+        if (m.getDest().equals(ApplicationService.APPLICATION_ID)) {
+            handleInboundMessage(m);
+        } else {
+            handleOutboundMesage(m);
+        }
+    }
+
+    private void handleInboundMessage(Message m) {
+        System.out.println(m.getData());
+    }
+
+    private void handleOutboundMesage(Message m) {
+
     }
 }

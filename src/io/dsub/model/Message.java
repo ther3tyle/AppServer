@@ -1,5 +1,2 @@
-package io.dsub.model;
-
-public abstract class Message {
-
+package io.dsub.model;public class Message {
 }
