@@ -3,27 +3,36 @@ package io.dsub.service;
 import io.dsub.config.AppConfig;
 import io.dsub.model.Status;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class Application implements Callable<Status> {
+public class ApplicationService implements Service {
 
-    private final CountDownLatch latch = AppConfig.getLatch();
-    /**
-     * Computes a result, or throws an exception if unable to do so.
-     *
-     * @return computed result
-     * @throws Exception if unable to compute a result
-     */
+    private final CountDownLatch latch = new CountDownLatch(2);
+    private final ExecutorService execService = Executors.newFixedThreadPool(4);
+    private final AtomicBoolean isActive = new AtomicBoolean(true);
+
+    private Future<Status> msgServiceStatus;
+    private Future<Status> connServiceStatus;
+
+    @Override
+    public void initThenReport() throws InterruptedException {
+        print("initializing...");
+        connServiceStatus = execService.submit(new ConnectionService(5000, this.isActive, latch));
+        msgServiceStatus = execService.submit(new MessageService(this.isActive, latch));
+        this.latch.await();
+    }
+
     @Override
     public Status call() throws Exception {
-        this.latch.await(5, TimeUnit.SECONDS);
-        System.out.println("main application initialized...");
+        initThenReport();
+        print("initialized...");
         while(AppConfig.getIsActive().get()) {
-            print("running");
             Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+            print("running");
         }
+        msgServiceStatus.get(5, TimeUnit.SECONDS);
+        connServiceStatus.get(5, TimeUnit.SECONDS);
         return Status.OK;
     }
 

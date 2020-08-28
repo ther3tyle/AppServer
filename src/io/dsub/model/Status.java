@@ -1,2 +1,5 @@
-package io.dsub.model;public class Status {
+package io.dsub.model;
+
+public enum Status {
+    OK, ERROR
 }
