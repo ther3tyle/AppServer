@@ -7,9 +7,9 @@ public class Connection {
     private final UUID uuid;
     private final Socket socket;
 
-    public Connection(Socket socket) {
+    public Connection(UUID uuid, Socket socket) {
+        this.uuid = uuid;
         this.socket = socket;
-        this.uuid = UUID.randomUUID();
     }
 
     public UUID getUuid() {

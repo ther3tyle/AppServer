@@ -1,25 +1,18 @@
 package io.dsub;
 
-import io.dsub.config.AppConfig;
-import io.dsub.service.ApplicationService;
+import io.dsub.service.AppService;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Executors;
 
 public class Main {
     public static void main(String[] args) {
-        ExecutorService service = AppConfig.getExecService();
-        ApplicationService applicationService = new ApplicationService();
+        ExecutorService executorService = Executors.newCachedThreadPool();
         try {
-            service.submit(applicationService);
-            while(true) {
-                Thread.sleep(TimeUnit.SECONDS.toMillis(10
-                ));
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            executorService.submit(new AppService());
         } finally {
-            service.shutdown();
+            executorService.shutdown();
         }
+
     }
 }
