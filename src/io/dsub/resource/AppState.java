@@ -1,24 +1,44 @@
 package io.dsub.resource;
 
 import io.dsub.model.Connection;
+import io.dsub.model.Message;
 
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AppState {
+
+    ///////////////////////////////////////////////////////////////////////////
+    // singleton
+    ///////////////////////////////////////////////////////////////////////////
     private AppState() {}
     private static final AppState instance = new AppState();
     public static AppState getInstance() {
         return instance;
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // instance fields
+    ///////////////////////////////////////////////////////////////////////////
+
+    private final AppConfig appConfig = AppConfig.getInstance();
     private final AtomicBoolean isActive = new AtomicBoolean(true);
-    private final CountDownLatch latch = new CountDownLatch(3);
+    private final CountDownLatch latch = new CountDownLatch(AppConfig.getInstance().getLatchCount());
     private final ExecutorService execService = Executors.newFixedThreadPool(4);
     private final ConcurrentMap<UUID, Connection> connMap = new ConcurrentHashMap<>();
-    private final BlockingQueue<UUID> closeConnQueue = new ArrayBlockingQueue<>(20);
 
+    private final BlockingQueue<UUID> closeConnectionQueue =
+            new ArrayBlockingQueue<>(appConfig.getQueueSize());
+
+    private final BlockingQueue<Connection> initConnectionQueue =
+            new ArrayBlockingQueue<>(appConfig.getQueueSize());
+    private final BlockingQueue<Message> inboundMessageQueue =
+            new ArrayBlockingQueue<>(appConfig.getQueueSize());
+
+    ///////////////////////////////////////////////////////////////////////////
+    // getters and setters
+    ///////////////////////////////////////////////////////////////////////////
     public AtomicBoolean getIsActive() {
         return isActive;
     }
@@ -35,7 +55,18 @@ public class AppState {
         return connMap;
     }
 
-    public BlockingQueue<UUID> getCloseConnQueue() {
-        return closeConnQueue;
+    public BlockingQueue<UUID> getCloseConnectionQueue() {
+        return closeConnectionQueue;
+    }
+
+    public BlockingQueue<Connection> getInitConnectionQueue() {
+        return initConnectionQueue;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // instance methods
+    ///////////////////////////////////////////////////////////////////////////
+    public void closeApp() {
+        this.isActive.set(false);
     }
 }

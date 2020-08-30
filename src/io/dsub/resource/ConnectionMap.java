@@ -7,12 +7,18 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ConnectionMap extends ConcurrentHashMap<UUID, Connection> {
 
+    ///////////////////////////////////////////////////////////////////////////
+    // singleton
+    ///////////////////////////////////////////////////////////////////////////
     private ConnectionMap(){}
     private static final ConnectionMap instance = new ConnectionMap();
     public static ConnectionMap getInstance() {
         return instance;
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // methods
+    ///////////////////////////////////////////////////////////////////////////
     public void put(Connection connection) {
         this.put(connection.getUuid(), connection);
     }

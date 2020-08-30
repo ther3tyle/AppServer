@@ -1,28 +1,26 @@
 package io.dsub.service;
 
 import io.dsub.TerminateStatus;
+import io.dsub.resource.AppConfig;
+import io.dsub.resource.AppState;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AppService implements Service {
 
-    private final AtomicBoolean isActive;
-    private final CountDownLatch initLatch;
-    private final ExecutorService executorService;
-    private final BlockingQueue<Service> serviceQueue;
+    private final AppConfig appConfig = AppConfig.getInstance();
+    private final AppState appState = AppState.getInstance();
+    private final AtomicBoolean isActive = appState.getIsActive();
+    private final CountDownLatch initLatch = appState.getLatch();
+    private final ExecutorService execService = appState.getExecService();
 
-    public AppService() {
-        this.isActive = new AtomicBoolean(true);
-        this.initLatch = new CountDownLatch(2);
-        this.executorService = Executors.newFixedThreadPool(4);
-        this.serviceQueue = new ArrayBlockingQueue<>(50);
-    }
+    public AppService() {}
 
     @Override
     public void initThenReport() {
-        executorService.submit(ConnectionService.getInstance());
-        executorService.submit(new MessageService(this.isActive, initLatch));
+        execService.submit(ConnectionService.getInstance());
+        execService.submit(new MessageService());
     }
 
     @Override
@@ -30,9 +28,6 @@ public class AppService implements Service {
         initThenReport();
         initLatch.await();
         while (isActive.get()) {
-            if (!serviceQueue.isEmpty()) {
-                this.executorService.submit(serviceQueue.take());
-            }
         }
         return null;
     }

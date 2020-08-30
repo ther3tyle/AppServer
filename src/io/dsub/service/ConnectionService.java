@@ -16,37 +16,50 @@ import java.util.logging.Logger;
 public class ConnectionService implements Service {
 
     ///////////////////////////////////////////////////////////////////////////
-    // global config and state resources
+    // singleton
     ///////////////////////////////////////////////////////////////////////////
-    private final ConnectionMap connectionMap
-            = ConnectionMap.getInstance();
-
-    private final BlockingQueue<UUID> closeConnQueue =
-            AppState.getInstance().getCloseConnQueue();
-
-    private final AtomicBoolean isActive =
-            AppState.getInstance().getIsActive();
-
-    ///////////////////////////////////////////////////////////////////////////
-    // fields
-    ///////////////////////////////////////////////////////////////////////////
-    private ServerSocket serverSocket;
-
-    private ConnectionService() {}
+    private ConnectionService(){}
     private static final ConnectionService instance = new ConnectionService();
     public static ConnectionService getInstance() {
         return instance;
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // global config and resources
+    ///////////////////////////////////////////////////////////////////////////
+    private final ConnectionMap connectionMap
+            = ConnectionMap.getInstance();
+
+    private final BlockingQueue<UUID> closeConnQueue =
+            AppState.getInstance().getCloseConnectionQueue();
+
+    private final AtomicBoolean isActive =
+            AppState.getInstance().getIsActive();
+
+    ///////////////////////////////////////////////////////////////////////////
+    // class variables
+    ///////////////////////////////////////////////////////////////////////////
+    private static final Logger logger = Logger.getLogger(ConnectionService.class.getName());
+
+    ///////////////////////////////////////////////////////////////////////////
+    // fields
+    ///////////////////////////////////////////////////////////////////////////
+    private ServerSocket serverSocket;
+    private final CountDownLatch latch = AppState.getInstance().getLatch();
+
     @Override
     public void initThenReport() throws IOException {
         this.serverSocket = new ServerSocket(AppConfig.getInstance().getPort());
-        AppState.getInstance().getLatch().countDown();
+        logger.info("instantiated ServerSocket");
+        latch.countDown();
     }
 
     @Override
     public TerminateStatus call() throws Exception {
         initThenReport();
+
+        latch.await();
+        logger.info(String.format("listening to port %d...", AppConfig.getInstance().getPort()));
 
         while (isActive.get()) {
             handleCloseConnRequest();
@@ -56,6 +69,9 @@ public class ConnectionService implements Service {
         return TerminateStatus.OK;
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // private methods
+    ///////////////////////////////////////////////////////////////////////////
     private void handleConnRequest() {
         Future<Connection> future = getFutureConn();
         Connection connection = getConnectionWithTimeout(future);
@@ -70,8 +86,9 @@ public class ConnectionService implements Service {
     private Connection getConnectionWithTimeout(Future<Connection> future) {
         try {
             return future.get(200, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            
+        } catch (InterruptedException | TimeoutException | ExecutionException e ) {
+            if (!(e instanceof TimeoutException))
+            logger.severe(e.getMessage());
         }
         return null;
     }
