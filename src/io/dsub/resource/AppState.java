@@ -30,7 +30,6 @@ public class AppState {
 
     private final BlockingQueue<UUID> closeConnectionQueue =
             new ArrayBlockingQueue<>(appConfig.getQueueSize());
-
     private final BlockingQueue<Connection> initConnectionQueue =
             new ArrayBlockingQueue<>(appConfig.getQueueSize());
     private final BlockingQueue<Message> inboundMessageQueue =

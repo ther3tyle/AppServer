@@ -18,8 +18,11 @@ public class ConnectionService implements Service {
     ///////////////////////////////////////////////////////////////////////////
     // singleton
     ///////////////////////////////////////////////////////////////////////////
-    private ConnectionService(){}
+    private ConnectionService() {
+    }
+
     private static final ConnectionService instance = new ConnectionService();
+
     public static ConnectionService getInstance() {
         return instance;
     }
@@ -75,7 +78,8 @@ public class ConnectionService implements Service {
     private void handleConnRequest() {
         Future<Connection> future = getFutureConn();
         Connection connection = getConnectionWithTimeout(future);
-        this.connectionMap.put(connection);
+        if (connection != null)
+            this.connectionMap.put(connection.getUuid(), connection);
     }
 
     private Future<Connection> getFutureConn() {
@@ -86,9 +90,10 @@ public class ConnectionService implements Service {
     private Connection getConnectionWithTimeout(Future<Connection> future) {
         try {
             return future.get(200, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException | TimeoutException | ExecutionException e ) {
-            if (!(e instanceof TimeoutException))
-            logger.severe(e.getMessage());
+        } catch (InterruptedException | TimeoutException | ExecutionException e) {
+            if (!(e instanceof TimeoutException)) {
+                logger.severe(e.getMessage());
+            }
         }
         return null;
     }
