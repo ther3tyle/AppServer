@@ -3,6 +3,8 @@ package io.dsub.resource;
 import io.dsub.model.Connection;
 import io.dsub.model.Message;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,7 +27,7 @@ public class AppState {
     private final AppConfig appConfig = AppConfig.getInstance();
     private final AtomicBoolean isActive = new AtomicBoolean(true);
     private final CountDownLatch latch = new CountDownLatch(AppConfig.getInstance().getLatchCount());
-    private final ExecutorService execService = Executors.newFixedThreadPool(4);
+    private final ExecutorService execService = Executors.newFixedThreadPool(16);
     private final ConcurrentMap<UUID, Connection> connMap = new ConcurrentHashMap<>();
 
     private final BlockingQueue<UUID> closeConnectionQueue =
@@ -36,7 +38,7 @@ public class AppState {
             new ArrayBlockingQueue<>(appConfig.getQueueSize());
 
     ///////////////////////////////////////////////////////////////////////////
-    // getters and setters
+    // getters
     ///////////////////////////////////////////////////////////////////////////
     public AtomicBoolean getIsActive() {
         return isActive;
@@ -60,6 +62,14 @@ public class AppState {
 
     public BlockingQueue<Connection> getInitConnectionQueue() {
         return initConnectionQueue;
+    }
+
+    public AppConfig getAppConfig() {
+        return appConfig;
+    }
+
+    public BlockingQueue<Message> getInboundMessageQueue() {
+        return inboundMessageQueue;
     }
 
     ///////////////////////////////////////////////////////////////////////////

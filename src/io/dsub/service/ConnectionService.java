@@ -8,6 +8,7 @@ import io.dsub.resource.ConnectionMap;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -35,6 +36,9 @@ public class ConnectionService implements Service {
 
     private final BlockingQueue<UUID> closeConnQueue =
             AppState.getInstance().getCloseConnectionQueue();
+
+    private final BlockingQueue<Socket> socketQueue =
+            new ArrayBlockingQueue<>(5);
 
     private final AtomicBoolean isActive =
             AppState.getInstance().getIsActive();
@@ -64,6 +68,8 @@ public class ConnectionService implements Service {
         latch.await();
         logger.info(String.format("listening to port %d...", AppConfig.getInstance().getPort()));
 
+        listenServerSocket();
+
         while (isActive.get()) {
             handleCloseConnRequest();
             handleConnRequest();
@@ -75,27 +81,22 @@ public class ConnectionService implements Service {
     ///////////////////////////////////////////////////////////////////////////
     // private methods
     ///////////////////////////////////////////////////////////////////////////
-    private void handleConnRequest() {
-        Future<Connection> future = getFutureConn();
-        Connection connection = getConnectionWithTimeout(future);
-        if (connection != null)
-            this.connectionMap.put(connection.getUuid(), connection);
-    }
-
-    private Future<Connection> getFutureConn() {
-        ExecutorService execService = AppState.getInstance().getExecService();
-        return execService.submit(() -> new Connection(UUID.randomUUID(), serverSocket.accept()));
-    }
-
-    private Connection getConnectionWithTimeout(Future<Connection> future) {
-        try {
-            return future.get(200, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException | TimeoutException | ExecutionException e) {
-            if (!(e instanceof TimeoutException)) {
-                logger.severe(e.getMessage());
-            }
+    private void handleConnRequest() throws InterruptedException {
+        while (!this.socketQueue.isEmpty()) {
+            Connection conn = new Connection(UUID.randomUUID(), this.socketQueue.take());
+            AppState.getInstance().getExecService().submit(new InputListener(conn));
+            this.connectionMap.put(conn.getUuid(), conn);
         }
-        return null;
+    }
+
+    private void listenServerSocket() {
+        ExecutorService execService = AppState.getInstance().getExecService();
+        execService.submit(() -> {
+            while (isActive.get()) {
+                socketQueue.put(serverSocket.accept());
+            }
+            return TerminateStatus.OK;
+        });
     }
 
     private void handleCloseConnRequest() throws InterruptedException, IOException {

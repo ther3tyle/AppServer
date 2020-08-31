@@ -24,8 +24,8 @@ public class ConnectionMap extends ConcurrentHashMap<UUID, Connection> {
     ///////////////////////////////////////////////////////////////////////////
     @Override
     public Connection put(UUID key, Connection value) {
-        logger.info("input...");
         if (value != null) {
+            logger.info("inserting connection");
             return super.put(key, value);
         }
         logger.info("found null!");
